@@ -29,7 +29,7 @@ extension M3U: CustomStringConvertible {
 }
 
 // MARK: -
-struct M3UMediaInfo {
-    let url: URL
-    let duration: Double
+public struct M3UMediaInfo {
+    public let url: URL
+    public let duration: Double
 }

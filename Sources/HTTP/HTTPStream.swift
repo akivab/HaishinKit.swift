@@ -2,7 +2,7 @@ import AVFoundation
 
 open class HTTPStream: NetStream {
     private(set) var name: String?
-    private lazy var tsWriter = TSFileWriter()
+    lazy var tsWriter = TSFileWriter()
 
     open func publish(_ name: String?) {
         lockQueue.async {

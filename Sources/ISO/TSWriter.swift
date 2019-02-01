@@ -263,16 +263,22 @@ extension TSWriter: VideoEncoderDelegate {
     }
 }
 
+public protocol TSFileWriterDelegate {
+    func tsFileWriterDidRotateFiles(playlist: String, files: [M3UMediaInfo])
+}
+
 class TSFileWriter: TSWriter {
-    static let defaultSegmentCount: Int = 3
-    static let defaultSegmentMaxCount: Int = 12
+    static let defaultSegmentCount: Int = 12
+    static let defaultSegmentMaxCount: Int = 36
 
     var segmentMaxCount: Int = TSFileWriter.defaultSegmentMaxCount
     private(set) var files: [M3UMediaInfo] = []
     private var currentFileHandle: FileHandle?
     private var currentFileURL: URL?
     private var sequence: Int = 0
+    var fileWriterDelegate: TSFileWriterDelegate?
 
+    let directory = "\(NSTemporaryDirectory())/\(Bundle.main.bundleIdentifier ?? "")/"
     var playlist: String {
         var m3u8 = M3U()
         m3u8.targetDuration = segmentDuration
@@ -300,23 +306,16 @@ class TSFileWriter: TSWriter {
         }
         let fileManager = FileManager.default
 
-        #if os(OSX)
-        let bundleIdentifier: String? = Bundle.main.bundleIdentifier
-        let temp: String = bundleIdentifier == nil ? NSTemporaryDirectory() : NSTemporaryDirectory() + bundleIdentifier! + "/"
-        #else
-        let temp: String = NSTemporaryDirectory()
-        #endif
-
-        if !fileManager.fileExists(atPath: temp) {
+        if !fileManager.fileExists(atPath: directory) {
             do {
-                try fileManager.createDirectory(atPath: temp, withIntermediateDirectories: false, attributes: nil)
+                try fileManager.createDirectory(atPath: directory, withIntermediateDirectories: false, attributes: nil)
             } catch let error as NSError {
                 logger.warn("\(error)")
             }
         }
 
         let filename: String = Int(timestamp.seconds).description + ".ts"
-        let url = URL(fileURLWithPath: temp + filename)
+        let url = URL(fileURLWithPath: directory + filename)
 
         if let currentFileURL: URL = currentFileURL {
             files.append(M3UMediaInfo(url: currentFileURL, duration: duration))
@@ -347,6 +346,7 @@ class TSFileWriter: TSWriter {
 
         writeProgram()
         rotatedTimestamp = timestamp
+        self.fileWriterDelegate?.tsFileWriterDidRotateFiles(playlist: self.playlist, files: self.files)
     }
 
     override func write(_ data: Data) {
